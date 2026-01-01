@@ -119,11 +119,11 @@ class ProductController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => ['nullable', 'string', 'max:255'],
-            'thumbnail_url' => ['nullable', 'string', 'max:255'],
-            'price' => ['nullable', 'integer', 'min:0'],
-            'description' => ['nullable', 'string', 'max:1500'],
-            'stock' => ['nullable', 'integer', 'min:0'],
+            'name' => ['sometimes', 'string', 'max:255'],
+            'thumbnail_url' => ['sometimes', 'string', 'max:255'],
+            'price' => ['sometimes', 'integer', 'min:0'],
+            'description' => ['sometimes', 'string', 'max:1500'],
+            'stock' => ['sometimes', 'integer', 'min:0'],
         ]);
 
         $slug = !empty($validated['name']) && ($validated['name'] != $product->name) ? Str::slug($validated['name']) : $product->slug;
@@ -131,15 +131,11 @@ class ProductController extends Controller
         try {
             $product = DB::transaction(function () use ($product, $validated, $slug) {
                 $product->update([
-                    'name' => !empty($validated['name']) ? $validated['name'] : $product->name,
-                    'thumbnail_url' => !empty($validated['thumbnail_url']) ? $validated['thumbnail_url'] : $product->thumbnail_url,
-                    'price' => !empty($validated['price']) ? $validated['price'] : $product->price,
-                    'description' => !empty($validated['description']) ? $validated['description'] : $product->description,
-                    'stock' => !empty($validated['stock']) ? $validated['stock'] : $product->stock,
+                    ...$validated,
                     'slug' => $slug,
                 ]);
 
-                return $product;
+                return $product->fresh();
             });
 
             return new ProductDetailResource($product);

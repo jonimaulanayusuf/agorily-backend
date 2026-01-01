@@ -14,9 +14,11 @@ return new class extends Migration
         Schema::create('favorites', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('product_id')->index();
+            $table->unsignedBigInteger('user_id')->index();
 
             // foreign key
             $table->foreign('product_id')->references('id')->on('products');
+            $table->foreign('user_id')->references('id')->on('users');
         });
     }
 

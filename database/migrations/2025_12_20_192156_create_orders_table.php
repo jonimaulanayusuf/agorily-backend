@@ -18,7 +18,11 @@ return new class extends Migration
             $table->string('payment_method');
             $table->string('payment_status');
             $table->decimal('total', 12);
+            $table->unsignedBigInteger('user_id')->index();
             $table->timestamps();
+
+            // foreign key
+            $table->foreign('user_id')->references('id')->on('users');
         });
     }
 

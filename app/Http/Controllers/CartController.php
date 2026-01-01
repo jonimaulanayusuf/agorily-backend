@@ -19,9 +19,9 @@ class CartController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $data = Cart::paginate(10);
+        $data = Cart::where('user_id', $request->user()->id)->paginate(10);
         return CartResource::collection($data);
     }
 
@@ -78,17 +78,20 @@ class CartController extends Controller
         ];
 
         try {
-            $cart = DB::transaction(function () use ($cart, $payload) {
+            $cart = DB::transaction(function () use ($cart, $payload, $request) {
                 if ($cart) {
                     $cart->update($payload);
                 } else {
-                    $cart = Cart::create($payload);
+                    $cart = Cart::create([
+                        ...$payload,
+                        'user_id' => $request->user()->id,
+                    ]);
                 }
 
-                return $cart;
+                return $cart->fresh();
             });
 
-            return new CartResource($cart->fresh());
+            return new CartResource($cart);
         } catch (Throwable) {
             abort(500);
         }
@@ -101,7 +104,7 @@ class CartController extends Controller
     {
         try {
             $id = Crypt::decrypt($_id);
-            $cart = Cart::with('product')->findOrFail($id);
+            $cart = Cart::with('product')->where('id', $id)->where('user_id', $request->user()->id)->firstOrFail();
         } catch (DecryptException | ModelNotFoundException) {
             abort(404);
         }
@@ -126,10 +129,10 @@ class CartController extends Controller
                     'subtotal' => $validated['qty'] * $cart->product->price,
                 ]);
 
-                return $cart;
+                return $cart->fresh();
             });
 
-            return new CartResource($cart->fresh());
+            return new CartResource($cart);
         } catch (Throwable) {
             abort(500);
         }
@@ -138,11 +141,11 @@ class CartController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $_id)
+    public function destroy(Request $request, string $_id)
     {
         try {
             $id = Crypt::decrypt($_id);
-            $cart = Cart::findOrFail($id);
+            $cart = Cart::where('id', $id)->where('user_id', $request->user()->id)->firstOrFail();
 
             DB::transaction(function () use ($cart) {
                 $cart->delete();

@@ -21,9 +21,9 @@ class OrderController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $data = Order::paginate(10);
+        $data = Order::where('user_id', $request->user()->id)->paginate(10);
         return OrderResource::collection($data);
     }
 
@@ -57,13 +57,14 @@ class OrderController extends Controller
                 return ($carry ?? 0) + $item->subtotal;
             });
 
-            $order = DB::transaction(function () use ($carts, $total) {
+            $order = DB::transaction(function () use ($carts, $total, $request) {
                 $order = Order::create([
                     'invoice' => Str::invoice(),
                     'payment_code' => Str::paymentCode(),
                     'payment_method' => 'Bank Transfer',
                     'payment_status' => Order::PAYMENT_PENDING,
                     'total' => $total,
+                    'user_id' => $request->user()->id,
                 ]);
 
                 foreach ($carts as $cart) {
@@ -80,7 +81,7 @@ class OrderController extends Controller
                     $cart->delete();
                 }
 
-                return $order->fresh();
+                return $order;
             });
 
             return new OrderDetailResource($order);
@@ -92,11 +93,11 @@ class OrderController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $_id)
+    public function show(Request $request, string $_id)
     {
         try {
             $id = Crypt::decrypt($_id);
-            $order = Order::findOrFail($id);
+            $order = Order::where('id', $id)->where('user_id', $request->user()->id)->firstOrFail();
         } catch (DecryptException | ModelNotFoundException) {
             abort(404);
         }

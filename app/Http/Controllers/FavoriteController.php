@@ -17,9 +17,9 @@ class FavoriteController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $data = Favorite::paginate(10);
+        $data = Favorite::where('user_id', $request->user()->id)->paginate(10);
         return FavoriteResource::collection($data);
     }
 
@@ -45,25 +45,28 @@ class FavoriteController extends Controller
 
         try {
             if (!$favorite) {
-                $favorite = DB::transaction(function () use ($validated) {
-                    return Favorite::create($validated);
+                $favorite = DB::transaction(function () use ($validated, $request) {
+                    return Favorite::create([
+                        ...$validated,
+                        'user_id' => $request->user()->id,
+                    ]);
                 });
             }
 
-            return new FavoriteResource($favorite->fresh());
-        } catch (Throwable) {
-            abort(500);
+            return new FavoriteResource($favorite);
+        } catch (Throwable $e) {
+            abort(500, $e->getMessage());
         }
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $_id)
+    public function destroy(Request $request, string $_id)
     {
         try {
             $id = Crypt::decrypt($_id);
-            $favorite = Favorite::findOrFail($id);
+            $favorite = Favorite::where('id', $id)->where('user_id', $request->user()->id)->firstOrFail();
 
             DB::transaction(function () use ($favorite) {
                 $favorite->delete();
